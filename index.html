@@ -5,209 +5,145 @@
 <title>🛒 سوق البيع و الشراء</title>
 
 <style>
-body{
-  font-family: Arial;
-  background:#f2f2f2;
-  margin:0;
-  padding:10px;
-  direction:rtl;
-}
-header{
-  background:#0a7cff;
-  color:white;
-  padding:10px;
-  text-align:center;
-}
-.box{
-  background:white;
-  padding:10px;
-  border-radius:6px;
-  margin-bottom:10px;
-}
-input,select,button{
-  width:100%;
-  padding:8px;
-  margin-top:5px;
-}
-button{
-  background:#0a7cff;
-  color:white;
-  border:none;
-  cursor:pointer;
-}
-.product{
-  background:white;
-  padding:10px;
-  border-radius:6px;
-  margin-bottom:10px;
-}
-.product img{
-  width:100%;
-  border-radius:6px;
-}
-.del{
-  background:red;
-  margin-top:5px;
-}
+body{margin:0;font-family:Arial;background:#f2f2f2;direction:rtl}
+header{background:#0a7cff;color:white;padding:10px}
+nav{display:flex;justify-content:space-between;align-items:center}
+nav button{background:white;color:#0a7cff;border:none;padding:6px 10px;border-radius:6px}
+.container{max-width:900px;margin:auto;padding:10px}
+.tabs button{margin:3px;padding:6px 10px;border:none;border-radius:6px}
+.card{background:white;padding:10px;border-radius:8px;margin-bottom:10px}
+.card img{width:100%;border-radius:6px}
+input,select,textarea,button{width:100%;padding:8px;margin-top:5px}
+.hidden{display:none}
+.error{color:red}
 </style>
 </head>
 
 <body>
 
 <header>
-  <h2>🛒 سوق البيع و الشراء</h2>
-  <div id="userEmail"></div>
-  <button onclick="logout()">تسجيل خروج</button>
+<nav>
+  <h3>🛒 سوق البيع و الشراء</h3>
+  <div>
+    <button onclick="showMarket()">تصفح</button>
+    <button onclick="showSeller()">بيع / تسجيل</button>
+  </div>
+</nav>
 </header>
 
-<div class="box" id="authBox">
-  <h3>تسجيل / دخول</h3>
-  <input id="email" placeholder="Email">
-  <input id="password" type="password" placeholder="Password">
-  <button onclick="authAction()">دخول / تسجيل</button>
+<div class="container">
+
+<!-- MARKET -->
+<div id="market">
+  <div class="tabs">
+    <button onclick="filterCat('all')">الكل</button>
+    <button onclick="filterCat('phones')">📱 هواتف</button>
+    <button onclick="filterCat('cars')">🚗 سيارات</button>
+    <button onclick="filterCat('homes')">🏠 عقارات</button>
+    <button onclick="filterCat('other')">📦 أخرى</button>
+  </div>
+  <div id="products"></div>
 </div>
 
-<div class="box" id="addBox" style="display:none">
+<!-- LOGIN -->
+<div id="login" class="hidden card">
+  <h3>تسجيل / دخول</h3>
+  <input id="lu" placeholder="اسم المستخدم">
+  <input id="lp" type="password" placeholder="كلمة السر">
+  <button onclick="login()">دخول / تسجيل</button>
+  <div class="error" id="lerr"></div>
+</div>
+
+<!-- SELL -->
+<div id="sell" class="hidden card">
   <h3>نشر إعلان</h3>
   <input id="title" placeholder="اسم السلعة">
   <input id="price" placeholder="السعر">
-  <select id="category">
-    <option>سيارات</option>
-    <option>هواتف</option>
-    <option>عقارات</option>
-    <option>إلكترونيات</option>
+  <select id="cat">
+    <option value="phones">📱 هواتف</option>
+    <option value="cars">🚗 سيارات</option>
+    <option value="homes">🏠 عقارات</option>
+    <option value="other">📦 أخرى</option>
   </select>
-  <input type="file" id="image">
-  <button onclick="addProduct()">نشر</button>
+  <textarea id="desc" placeholder="وصف المنتج"></textarea>
+  <input id="city" placeholder="الولاية / العنوان">
+  <input id="phone" placeholder="رقم الهاتف">
+  <input type="file" id="img">
+  <button onclick="publish()">نشر</button>
+  <button onclick="logout()">تسجيل خروج</button>
 </div>
 
-<input id="search" placeholder="بحث..." onkeyup="loadProducts()">
-
-<div id="products"></div>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import {
-  getAuth,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  setPersistence,
-  browserLocalPersistence,
-  signOut
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import {
-  getDatabase,
-  ref,
-  push,
-  onValue,
-  remove
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import {
-  getStorage,
-  ref as sRef,
-  uploadBytes,
-  getDownloadURL
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+import { getDatabase, ref, get, set, push, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
-const firebaseConfig = {
+const app = initializeApp({
   apiKey: "AIzaSyA_5OCpY0HUAAzYmKIhW7uaLrCoe4GSHm0",
-  authDomain: "souk-92715.firebaseapp.com",
   databaseURL: "https://souk-92715-default-rtdb.firebaseio.com",
   projectId: "souk-92715",
   storageBucket: "souk-92715.firebasestorage.app",
-  messagingSenderId: "649243525358",
-  appId: "1:649243525358:web:ca1efef75b3f579860b3ff"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+});
 const db = getDatabase(app);
 const storage = getStorage(app);
 
-/* خلي المستخدم يبقى متسجّل */
-setPersistence(auth, browserLocalPersistence);
+let user = localStorage.getItem("user");
+let currentCat = "all";
 
-/* زر واحد تسجيل / دخول */
-window.authAction = async () => {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+function hash(p){return btoa(p);}
 
-  if(!email || !password){
-    alert("عمّر الإيميل و الباسورد");
-    return;
-  }
-
-  try{
-    await signInWithEmailAndPassword(auth, email, password);
-  }catch(e){
-    if(e.code === "auth/user-not-found"){
-      await createUserWithEmailAndPassword(auth, email, password);
-    }else{
-      alert(e.message);
-    }
-  }
+window.showMarket=()=>{market.classList.remove("hidden");login.classList.add("hidden");sell.classList.add("hidden");}
+window.showSeller=()=>{
+  market.classList.add("hidden");
+  user ? sell.classList.remove("hidden") : login.classList.remove("hidden");
 };
 
-/* حالة المستخدم */
-onAuthStateChanged(auth, user=>{
-  if(user){
-    authBox.style.display="none";
-    addBox.style.display="block";
-    userEmail.innerText = user.email;
-    loadProducts();
-  }else{
-    authBox.style.display="block";
-    addBox.style.display="none";
-    userEmail.innerText="";
-  }
-});
+window.login=async()=>{
+  lerr.innerText="";
+  const u=lu.value.toLowerCase(), p=lp.value;
+  const r=ref(db,"users/"+u), s=await get(r);
+  if(!s.exists()){await set(r,{p:hash(p)});localStorage.setItem("user",u);}
+  else if(s.val().p!==hash(p)){lerr.innerText="❌ الاسم مستعمل و كلمة السر غالطة";return;}
+  localStorage.setItem("user",u);location.reload();
+};
 
-/* خروج */
-window.logout = ()=> signOut(auth);
+window.logout=()=>{localStorage.removeItem("user");location.reload();};
 
-/* إضافة إعلان */
-window.addProduct = async ()=>{
-  if(!image.files[0]){ alert("أضف صورة"); return; }
+window.publish=async()=>{
+  if(!img.files[0]) return alert("أضف صورة");
+  const ir=sRef(storage,"img/"+Date.now());
+  await uploadBytes(ir,img.files[0]);
+  const url=await getDownloadURL(ir);
 
-  const imgRef = sRef(storage,"images/"+Date.now());
-  await uploadBytes(imgRef,image.files[0]);
-  const imgUrl = await getDownloadURL(imgRef);
-
-  push(ref(db,"products"),{
-    title:title.value,
-    price:price.value,
-    category:category.value,
-    image:imgUrl,
-    user:auth.currentUser.uid
+  await push(ref(db,"products"),{
+    title:title.value,price:price.value,cat:cat.value,
+    desc:desc.value,city:city.value,phone:phone.value,
+    img:url,user:user,time:Date.now()
   });
-
-  title.value=price.value="";
+  alert("تم النشر ✔️");
 };
 
-/* عرض الإعلانات */
-window.loadProducts = ()=>{
-  onValue(ref(db,"products"),snap=>{
+function load(){
+  onValue(ref(db,"products"),s=>{
     products.innerHTML="";
-    snap.forEach(item=>{
-      const p=item.val();
-      if(!p.title.includes(search.value)) return;
-
+    s.forEach(i=>{
+      const p=i.val();
+      if(currentCat!=="all" && p.cat!==currentCat) return;
       products.innerHTML+=`
-      <div class="product">
-        <img src="${p.image}">
-        <b>${p.title}</b><br>
-        💰 ${p.price}<br>
-        📂 ${p.category}
-        ${p.user===auth.currentUser?.uid
-          ? `<button class="del" onclick="del('${item.key}')">حذف</button>`
-          : ""}
+      <div class="card">
+        <img src="${p.img}">
+        <b>${p.title}</b> – 💰 ${p.price}<br>
+        ${p.desc}<br>
+        📍 ${p.city}<br>
+        📞 ${p.phone}
       </div>`;
     });
   });
-};
-
-window.del = id => remove(ref(db,"products/"+id));
+}
+window.filterCat=c=>{currentCat=c;load();}
+load();
 </script>
 
 </body>
