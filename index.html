@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>🛒 سوق البيع و الشراء</title>
+
+<style>
+body{
+  font-family: Arial;
+  background:#f2f2f2;
+  margin:0;
+  padding:10px;
+  direction:rtl;
+}
+header{
+  background:#0a7cff;
+  color:white;
+  padding:10px;
+  text-align:center;
+}
+.box{
+  background:white;
+  padding:10px;
+  border-radius:6px;
+  margin-bottom:10px;
+}
+input,select,button{
+  width:100%;
+  padding:8px;
+  margin-top:5px;
+}
+button{
+  background:#0a7cff;
+  color:white;
+  border:none;
+  cursor:pointer;
+}
+.product{
+  background:white;
+  padding:10px;
+  border-radius:6px;
+  margin-bottom:10px;
+}
+.product img{
+  width:100%;
+  border-radius:6px;
+}
+.del{
+  background:red;
+  margin-top:5px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h2>🛒 سوق البيع و الشراء</h2>
+  <div id="userEmail"></div>
+  <button onclick="logout()">تسجيل خروج</button>
+</header>
+
+<div class="box" id="authBox">
+  <h3>تسجيل / دخول</h3>
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="authAction()">دخول / تسجيل</button>
+</div>
+
+<div class="box" id="addBox" style="display:none">
+  <h3>نشر إعلان</h3>
+  <input id="title" placeholder="اسم السلعة">
+  <input id="price" placeholder="السعر">
+  <select id="category">
+    <option>سيارات</option>
+    <option>هواتف</option>
+    <option>عقارات</option>
+    <option>إلكترونيات</option>
+  </select>
+  <input type="file" id="image">
+  <button onclick="addProduct()">نشر</button>
+</div>
+
+<input id="search" placeholder="بحث..." onkeyup="loadProducts()">
+
+<div id="products"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import {
+  getDatabase,
+  ref,
+  push,
+  onValue,
+  remove
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import {
+  getStorage,
+  ref as sRef,
+  uploadBytes,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA_5OCpY0HUAAzYmKIhW7uaLrCoe4GSHm0",
+  authDomain: "souk-92715.firebaseapp.com",
+  databaseURL: "https://souk-92715-default-rtdb.firebaseio.com",
+  projectId: "souk-92715",
+  storageBucket: "souk-92715.firebasestorage.app",
+  messagingSenderId: "649243525358",
+  appId: "1:649243525358:web:ca1efef75b3f579860b3ff"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+const storage = getStorage(app);
+
+/* خلي المستخدم يبقى متسجّل */
+setPersistence(auth, browserLocalPersistence);
+
+/* زر واحد تسجيل / دخول */
+window.authAction = async () => {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  if(!email || !password){
+    alert("عمّر الإيميل و الباسورد");
+    return;
+  }
+
+  try{
+    await signInWithEmailAndPassword(auth, email, password);
+  }catch(e){
+    if(e.code === "auth/user-not-found"){
+      await createUserWithEmailAndPassword(auth, email, password);
+    }else{
+      alert(e.message);
+    }
+  }
+};
+
+/* حالة المستخدم */
+onAuthStateChanged(auth, user=>{
+  if(user){
+    authBox.style.display="none";
+    addBox.style.display="block";
+    userEmail.innerText = user.email;
+    loadProducts();
+  }else{
+    authBox.style.display="block";
+    addBox.style.display="none";
+    userEmail.innerText="";
+  }
+});
+
+/* خروج */
+window.logout = ()=> signOut(auth);
+
+/* إضافة إعلان */
+window.addProduct = async ()=>{
+  if(!image.files[0]){ alert("أضف صورة"); return; }
+
+  const imgRef = sRef(storage,"images/"+Date.now());
+  await uploadBytes(imgRef,image.files[0]);
+  const imgUrl = await getDownloadURL(imgRef);
+
+  push(ref(db,"products"),{
+    title:title.value,
+    price:price.value,
+    category:category.value,
+    image:imgUrl,
+    user:auth.currentUser.uid
+  });
+
+  title.value=price.value="";
+};
+
+/* عرض الإعلانات */
+window.loadProducts = ()=>{
+  onValue(ref(db,"products"),snap=>{
+    products.innerHTML="";
+    snap.forEach(item=>{
+      const p=item.val();
+      if(!p.title.includes(search.value)) return;
+
+      products.innerHTML+=`
+      <div class="product">
+        <img src="${p.image}">
+        <b>${p.title}</b><br>
+        💰 ${p.price}<br>
+        📂 ${p.category}
+        ${p.user===auth.currentUser?.uid
+          ? `<button class="del" onclick="del('${item.key}')">حذف</button>`
+          : ""}
+      </div>`;
+    });
+  });
+};
+
+window.del = id => remove(ref(db,"products/"+id));
+</script>
+
+</body>
+</html>
