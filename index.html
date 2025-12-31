@@ -1,21 +1,31 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>🛒 سوق البيع و الشراء</title>
+<title>Marketplace</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-body{margin:0;font-family:Arial;background:#f2f2f2;direction:rtl}
-header{background:#0a7cff;color:white;padding:10px}
-nav{display:flex;justify-content:space-between;align-items:center}
-nav button{background:white;color:#0a7cff;border:none;padding:6px 10px;border-radius:6px}
-.container{max-width:900px;margin:auto;padding:10px}
-.tabs button{margin:3px;padding:6px 10px;border:none;border-radius:6px}
-.card{background:white;padding:10px;border-radius:8px;margin-bottom:10px}
-.card img{width:100%;border-radius:6px}
-input,select,textarea,button{width:100%;padding:8px;margin-top:5px}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial;background:#f4f6f8}
+header{background:#0a7cff;color:#fff;padding:12px}
+nav{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}
+nav button{margin:3px;padding:6px 12px;border:none;border-radius:6px;cursor:pointer}
+.container{max-width:1200px;margin:auto;padding:10px}
+
+.filter,.card{background:#fff;padding:10px;border-radius:8px;margin-bottom:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.card img.main{width:100%;height:160px;object-fit:cover;border-radius:6px}
+.thumb{width:45px;height:45px;object-fit:cover;margin:2px;border-radius:4px}
 .hidden{display:none}
-.error{color:red}
+.delete{background:#e74c3c;color:#fff;border:none;padding:5px;border-radius:4px;margin-top:5px}
+.pagination button{margin:2px}
+input,select,textarea,button{width:100%;padding:8px;margin-top:5px}
+.car-only{display:none}
+
+@media(max-width:600px){
+  nav h2{font-size:18px}
+}
 </style>
 </head>
 
@@ -23,127 +33,220 @@ input,select,textarea,button{width:100%;padding:8px;margin-top:5px}
 
 <header>
 <nav>
-  <h3>🛒 سوق البيع و الشراء</h3>
+  <h2>🛒 Marketplace</h2>
   <div>
-    <button onclick="showMarket()">تصفح</button>
-    <button onclick="showSeller()">بيع / تسجيل</button>
+    <button onclick="showHome()">Home</button>
+    <button onclick="showSeller()">Sell / Login</button>
   </div>
 </nav>
 </header>
 
 <div class="container">
 
-<!-- MARKET -->
-<div id="market">
-  <div class="tabs">
-    <button onclick="filterCat('all')">الكل</button>
-    <button onclick="filterCat('phones')">📱 هواتف</button>
-    <button onclick="filterCat('cars')">🚗 سيارات</button>
-    <button onclick="filterCat('homes')">🏠 عقارات</button>
-    <button onclick="filterCat('other')">📦 أخرى</button>
+<!-- HOME -->
+<div id="home">
+  <div class="filter">
+    <select id="cat" onchange="onCategoryChange()">
+      <option value="all">All</option>
+      <option value="cars">Cars</option>
+      <option value="phones">Phones</option>
+      <option value="other">Other</option>
+    </select>
+
+    <input id="brand" placeholder="Brand">
+    <input id="model" placeholder="Model">
+    <input id="year" class="car-only" placeholder="Year">
+
+    <input id="min" placeholder="Min price">
+    <input id="max" placeholder="Max price">
+
+    <select id="sort">
+      <option value="new">Newest</option>
+      <option value="low">Price ↑</option>
+      <option value="high">Price ↓</option>
+    </select>
+
+    <button onclick="applyFilters()">Search</button>
   </div>
-  <div id="products"></div>
+
+  <div class="grid" id="products"></div>
+  <div class="pagination" id="pages"></div>
 </div>
 
 <!-- LOGIN -->
 <div id="login" class="hidden card">
-  <h3>تسجيل / دخول</h3>
-  <input id="lu" placeholder="اسم المستخدم">
-  <input id="lp" type="password" placeholder="كلمة السر">
-  <button onclick="login()">دخول / تسجيل</button>
-  <div class="error" id="lerr"></div>
+  <h3>Login / Register</h3>
+  <input id="lu" placeholder="Username">
+  <input id="lp" type="password" placeholder="Password">
+  <button onclick="login()">Continue</button>
+  <div id="lerr" style="color:red"></div>
 </div>
 
-<!-- SELL -->
-<div id="sell" class="hidden card">
-  <h3>نشر إعلان</h3>
-  <input id="title" placeholder="اسم السلعة">
-  <input id="price" placeholder="السعر">
-  <select id="cat">
-    <option value="phones">📱 هواتف</option>
-    <option value="cars">🚗 سيارات</option>
-    <option value="homes">🏠 عقارات</option>
-    <option value="other">📦 أخرى</option>
-  </select>
-  <textarea id="desc" placeholder="وصف المنتج"></textarea>
-  <input id="city" placeholder="الولاية / العنوان">
-  <input id="phone" placeholder="رقم الهاتف">
-  <input type="file" id="img">
-  <button onclick="publish()">نشر</button>
-  <button onclick="logout()">تسجيل خروج</button>
+<!-- SELLER -->
+<div id="seller" class="hidden">
+  <div class="card">
+    <h3>Add Product</h3>
+    <input id="title" placeholder="Title">
+    <input id="price" placeholder="Price">
+    <select id="pcat">
+      <option value="cars">Cars</option>
+      <option value="phones">Phones</option>
+      <option value="other">Other</option>
+    </select>
+    <input id="brand2" placeholder="Brand">
+    <input id="model2" placeholder="Model">
+    <input id="year2" placeholder="Year (cars)">
+    <textarea id="desc" placeholder="Description"></textarea>
+    <input type="file" id="imgs" multiple>
+    <button onclick="publish()">Publish</button>
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <h3>Your Products</h3>
+  <div class="grid" id="myProducts"></div>
 </div>
 
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, get, set, push, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getDatabase, ref, get, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 const app = initializeApp({
   apiKey: "AIzaSyA_5OCpY0HUAAzYmKIhW7uaLrCoe4GSHm0",
   databaseURL: "https://souk-92715-default-rtdb.firebaseio.com",
   projectId: "souk-92715",
-  storageBucket: "souk-92715.firebasestorage.app",
+  storageBucket: "souk-92715.firebasestorage.app"
 });
 const db = getDatabase(app);
 const storage = getStorage(app);
 
 let user = localStorage.getItem("user");
-let currentCat = "all";
+let all = [], page = 1, per = 20;
 
-function hash(p){return btoa(p);}
+function hash(p){ return btoa(p); }
 
-window.showMarket=()=>{market.classList.remove("hidden");login.classList.add("hidden");sell.classList.add("hidden");}
-window.showSeller=()=>{
-  market.classList.add("hidden");
-  user ? sell.classList.remove("hidden") : login.classList.remove("hidden");
+window.showHome = ()=>{
+  home.classList.remove("hidden");
+  login.classList.add("hidden");
+  seller.classList.add("hidden");
 };
 
-window.login=async()=>{
-  lerr.innerText="";
-  const u=lu.value.toLowerCase(), p=lp.value;
-  const r=ref(db,"users/"+u), s=await get(r);
-  if(!s.exists()){await set(r,{p:hash(p)});localStorage.setItem("user",u);}
-  else if(s.val().p!==hash(p)){lerr.innerText="❌ الاسم مستعمل و كلمة السر غالطة";return;}
-  localStorage.setItem("user",u);location.reload();
+window.showSeller = ()=>{
+  home.classList.add("hidden");
+  user ? seller.classList.remove("hidden") : login.classList.remove("hidden");
 };
 
-window.logout=()=>{localStorage.removeItem("user");location.reload();};
+window.login = async ()=>{
+  const u = lu.value.toLowerCase(), p = lp.value;
+  const r = ref(db,"users/"+u), s = await get(r);
+  if(!s.exists()) await set(r,{p:hash(p)});
+  else if(s.val().p !== hash(p)){ lerr.innerText="Username exists & wrong password"; return; }
+  localStorage.setItem("user",u);
+  location.reload();
+};
 
-window.publish=async()=>{
-  if(!img.files[0]) return alert("أضف صورة");
-  const ir=sRef(storage,"img/"+Date.now());
-  await uploadBytes(ir,img.files[0]);
-  const url=await getDownloadURL(ir);
+window.logout = ()=>{ localStorage.removeItem("user"); location.reload(); };
 
+window.publish = async ()=>{
+  const files = [...imgs.files].slice(0,5);
+  let urls = [];
+  for(const f of files){
+    const r = sRef(storage,"img/"+Date.now()+f.name);
+    await uploadBytes(r,f);
+    urls.push(await getDownloadURL(r));
+  }
   await push(ref(db,"products"),{
-    title:title.value,price:price.value,cat:cat.value,
-    desc:desc.value,city:city.value,phone:phone.value,
-    img:url,user:user,time:Date.now()
+    title:title.value,
+    price:+price.value,
+    cat:pcat.value,
+    brand:brand2.value,
+    model:model2.value,
+    year:year2.value,
+    desc:desc.value,
+    imgs:urls,
+    user:user,
+    time:Date.now()
   });
-  alert("تم النشر ✔️");
+  alert("Published ✔");
 };
 
-function load(){
-  onValue(ref(db,"products"),s=>{
-    products.innerHTML="";
-    s.forEach(i=>{
-      const p=i.val();
-      if(currentCat!=="all" && p.cat!==currentCat) return;
-      products.innerHTML+=`
-      <div class="card">
-        <img src="${p.img}">
-        <b>${p.title}</b> – 💰 ${p.price}<br>
-        ${p.desc}<br>
-        📍 ${p.city}<br>
-        📞 ${p.phone}
-      </div>`;
-    });
+onValue(ref(db,"products"),snap=>{
+  all=[];
+  snap.forEach(i=>all.push({id:i.key,...i.val()}));
+  render();
+  renderMine();
+});
+
+window.onCategoryChange = ()=>{
+  document.querySelectorAll(".car-only").forEach(e=>{
+    e.style.display = cat.value==="cars" ? "block" : "none";
+  });
+  applyFilters();
+};
+
+window.applyFilters = ()=>{
+  page = 1;
+  render();
+};
+
+function render(){
+  let list=[...all];
+  const c = cat.value;
+
+  if(c!=="all") list=list.filter(p=>p.cat===c);
+
+  if(brand.value)
+    list=list.filter(p=>p.brand?.toLowerCase().includes(brand.value.toLowerCase()));
+  if(model.value)
+    list=list.filter(p=>p.model?.toLowerCase().includes(model.value.toLowerCase()));
+  if(c==="cars" && year.value)
+    list=list.filter(p=>p.year==year.value);
+  if(min.value)
+    list=list.filter(p=>p.price>=+min.value);
+  if(max.value)
+    list=list.filter(p=>p.price<=+max.value);
+
+  if(sort.value==="low") list.sort((a,b)=>a.price-b.price);
+  if(sort.value==="high") list.sort((a,b)=>b.price-a.price);
+  if(sort.value==="new") list.sort((a,b)=>b.time-a.time);
+
+  if(c==="all") list=list.slice(0,50);
+
+  const start=(page-1)*per;
+  const show=list.slice(start,start+per);
+
+  products.innerHTML="";
+  show.forEach(p=>{
+    products.innerHTML+=`
+    <div class="card">
+      <img class="main" src="${p.imgs[0]}">
+      ${p.imgs.slice(1).map(i=>`<img class="thumb" src="${i}">`).join("")}
+      <b>${p.title}</b><br>
+      💰 ${p.price}<br>
+      ${p.brand||""} ${p.model||""} ${p.year||""}
+    </div>`;
+  });
+
+  pages.innerHTML="";
+  for(let i=1;i<=Math.ceil(list.length/per);i++)
+    pages.innerHTML+=`<button onclick="page=${i};render()">${i}</button>`;
+}
+
+function renderMine(){
+  myProducts.innerHTML="";
+  all.filter(p=>p.user===user).forEach(p=>{
+    myProducts.innerHTML+=`
+    <div class="card">
+      <img class="main" src="${p.imgs[0]}">
+      <b>${p.title}</b>
+      <button class="delete" onclick="removeProd('${p.id}')">Delete</button>
+    </div>`;
   });
 }
-window.filterCat=c=>{currentCat=c;load();}
-load();
+
+window.removeProd = id => remove(ref(db,"products/"+id));
 </script>
 
 </body>
